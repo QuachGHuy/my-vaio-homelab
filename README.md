@@ -161,6 +161,22 @@ Current limitations include:
 
 Additionally, the ISP-provided router handles both internet traffic and local network traffic, which may become a bottleneck during large file transfers.
 
+### DNS and Service Discovery
+
+The homelab currently does not have a dedicated local DNS server.
+
+As a result:
+
+- Ubuntu management clients must manually maintain `/etc/hosts` entries to resolve local domains such as:
+  - `nas.homelab.local`
+  - `portainer.homelab.local`
+  - `music.homelab.local`
+  - `gallery.homelab.local`
+
+- Android devices cannot resolve these custom hostnames and must access services directly using:
+  ```text
+  192.168.100.199:<PORT>
+  ```
 ## Future Plans
 
 - Deploy AdGuard Home for local DNS resolution.
