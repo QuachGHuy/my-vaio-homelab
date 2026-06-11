@@ -1,0 +1,21 @@
+services:
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    user: 1000:1000                       # Run as a non-root user for better security
+    ports:
+      - "4533:4533"
+    restart: unless-stopped
+    environment:
+      ND_MUSICFOLDER: "/music"
+      ND_DATAFOLDER: "/data"
+      ND_LOGLEVEL: "info"
+      ND_SCANSCHEDULE: "0"                # Disable auto-scan so the external HDD can spin down and sleep
+      ND_PROMETHEUS_ENABLED: "false"      # Disable telemetry metrics to save precious CPU/RAM
+      ND_SESSIONTIMEOUT: "24h"              
+    volumes:
+      - navidrome_data:/data              # Keep database/metadata on the fast internal SSD (vg_docker)
+      - /mnt/nas_storage/huyquach/music:/music:ro # Mount the massive music vault from the HDD as Read-Only
+
+volumes:
+  navidrome_data:                         # Allocated safely within the LVM vg_docker pool

@@ -1,0 +1,60 @@
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:release
+    volumes:
+      # Store raw photos and videos on the massive external HDD to maximize capacity
+      - /mnt/nas_storage/huyquach/gallery:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - DB_HOSTNAME=immich_postgres
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=your_secure_password     # <-- Make sure to change this to a secure password later
+      - DB_DATABASE_NAME=immich
+      - REDIS_HOSTNAME=immich_redis
+      # Restrict background workers for heavy queue tasks (like video transcoding) to prevent CPU starvation
+      - IMMICH_CPU_WORKERS=2                 
+    ports:
+      - 2283:2283
+    depends_on:
+      - redis
+      - database
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1000M                   # Hard-cap the application RAM under 1GB to protect host resources
+
+  redis:
+    container_name: immich_redis
+    image: docker.io/redis:7-alpine
+    volumes:
+      # Cache metadata on the internal SSD (vg_docker) for lightning-fast UI responsiveness
+      - immich_redis_data:/data
+    restart: always
+
+  database:
+    container_name: immich_postgres
+    image: docker.io/tensorchord/pgvecto-rs:pg16-v0.2.0
+    environment:
+      - POSTGRES_DB=immich
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=your_secure_password     # <-- Make sure to change this to a secure password later
+      - POSTGRES_INITDB_ARGS=--data-checksums
+    # ---- POSTGRES RAM TIGHTENING CONFIGURATIONS ----
+    command: [
+      "postgres",
+      "-c", "shared_preload_libraries=vectors.so",
+      "-c", "shared_buffers=64MB",        # Shrink shared buffer memory to the absolute minimum for a light homelab
+      "-c", "max_connections=20",         # Cap concurrent connections to drastically lower background CPU overhead
+      "-c", "work_mem=4MB",               # Limit maximum RAM allocated for internal sort operations and hashes
+      "-c", "maintenance_work_mem=16MB"   # Minimize memory footprint for routine DB vacuuming/maintenance tasks
+    ]
+    volumes:
+      # This completely saves the external HDD from destructive 4K random read/write cycles.
+      - immich_db_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  immich_db_data:
+  immich_redis_data:
