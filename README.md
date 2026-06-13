@@ -8,9 +8,7 @@ Giving my 2012 Sony Vaio laptop a second life as a Debian-powered homelab server
 ![Status](https://img.shields.io/badge/Status-Active-success)
 ![Hardware](https://img.shields.io/badge/Hardware-Sony%20Vaio%20SVE14136CVB-lightgrey)
 
-<p align="center">
-  <img src="assets/myvaio.png" width="600">
-</p>
+![Vaio](assets/myvaio.png)
 
 ## Hardware Overview
 
@@ -38,12 +36,12 @@ Giving my 2012 Sony Vaio laptop a second life as a Debian-powered homelab server
 ## Running Services
 
 | Service | Purpose | Access |
-|----------|----------|----------|
+| ---------- | ---------- | ---------- |
 | Cockpit | Server administration | nas.homelab.local |
 | Portainer | Container management | portainer.homelab.local |
 | Navidrome | Music streaming | music.homelab.local |
 | Immich | Photo backup | gallery.homelab.local |
-| Nginx Proxy Manager| Reverse proxy | npm.homelab.local |
+| Nginx Proxy Manager | Reverse proxy | npm.homelab.local |
 | NFS Service | Shared storage (Cockpit plugin) | Internal network |
 
 ## Why this project?
@@ -54,7 +52,7 @@ Even after all these years, the laptop was still working surprisingly well. Inst
 
 This project documents that journey: reusing old hardware, learning Linux system administration, self-hosting services, and building a practical home server with limited resources.
 
-# Project Goals
+## Project Goals
 
 - Learn Linux system administration
 - Practice Docker and containerized services
@@ -74,10 +72,11 @@ This directory contains the architecture documentation, network topology, and st
 
 The homelab runs on Debian 13 (headless) and uses Nginx Proxy Manager as a central reverse proxy for internal services. UFW is used as the host firewall to restrict unnecessary network access.
 
-**Traffic Routing Note:**
-* **Ubuntu Laptop (Management Client):** Resolves local domains like `*.homelab.local` directly via the `/etc/hosts` file to route through the Reverse Proxy. This provides cleaner URLs and allows all services to be accessed through a single reverse proxy.
-* **Android Phone (Media Client):** Due to mobile OS restrictions (non-rooted), mobile devices bypass local DNS and access services directly using the server's static internal IP and exposed physical ports (`192.168.100.199:PORT`).
+#### Traffic Routing Note
 
+- **Ubuntu Laptop (Management Client):** Resolves local domains like `*.homelab.local` directly via the `/etc/hosts` file to route through the Reverse Proxy. This provides cleaner URLs and allows all services to be accessed through a single reverse proxy.
+
+- **Android Phone (Media Client):** Due to mobile OS restrictions (non-rooted), mobile devices bypass local DNS and access services directly using the server's static internal IP and exposed physical ports (`192.168.100.199:PORT`).
 
 ---
 
@@ -89,21 +88,21 @@ Because the hardware is over a decade old, storage is separated into two layers 
 
 #### A. High-Performance Layer (Internal SSD)
 
-* **Specs:** Samsung 860 EVO 250GB SATA III SSD.
-* **Logical Structure:** Driven by **LVM (Logical Volume Manager)** for flexible partitioning:
-* `/boot` (1GB): Handles the core Linux system boot files.
-* `LVM Volume Group` (249GB): The main pool, divided into two Logical Volumes:
-* `vg_root` (38GB) [Mounted at `/`]: Carries the headless Debian 13 OS and core system utilities (`ufw`, `cockpit`, `htop`).
-* `vg_docker` (210GB) [Mounted at `/var/lib/docker`]: Keeping container data on the SSD helps maintain responsive database and application performance.
+- **Specs:** Samsung 860 EVO 250GB SATA III SSD.
+- **Logical Structure:** Driven by **LVM (Logical Volume Manager)** for flexible partitioning:
+- `/boot` (1GB): Handles the core Linux system boot files.
+- `LVM Volume Group` (249GB): The main pool, divided into two Logical Volumes:
+- `vg_root` (38GB) [Mounted at `/`]: Carries the headless Debian 13 OS and core system utilities (`ufw`, `cockpit`, `htop`).
+- `vg_docker` (210GB) [Mounted at `/var/lib/docker`]: Keeping container data on the SSD helps maintain responsive database and application performance.
 
 #### B. Mass-Storage Layer (External HDD)
 
-* **Specs:** WD HDD 750GB SATA II connected through USB 3.0 port.
-* **Logical Structure:** Permanently mounted to `/mnt/nas_storage`.
-* **Applications:** This drive stores large media files and shared data:
-    * **Music Library**: High-quality Lossless/DSD files serving the **Navidrome Streaming Server**.
-    * **Photo Library**: Stores original photos and videos synchronized through **Immich Server**.
-    * **NFS Shared Storage**: Provides shared storage for devices within the home network.
+- **Specs:** WD HDD 750GB SATA II connected through USB 3.0 port.
+- **Logical Structure:** Permanently mounted to `/mnt/nas_storage`.
+- **Applications:** This drive stores large media files and shared data:
+  - **Music Library**: High-quality Lossless/DSD files serving the **Navidrome Streaming Server**.
+  - **Photo Library**: Stores original photos and videos synchronized through **Immich Server**.
+  - **NFS Shared Storage**: Provides shared storage for devices within the home network.
 
 Separating user data from system workloads keeps the SSD focused on application performance while allowing the larger HDD to handle bulk storage.
 
@@ -118,10 +117,11 @@ The laptop only has 4GB of RAM available, which can become a bottleneck when run
 To improve memory efficiency, the system uses zram with the **`zstd`** compression algorithm to create a 2GB compressed swap device in memory.
 
 Benefits include:
-* Better stability under memory pressure
-* Reduced risk of out-of-memory (OOM) events
-* Less write activity on the SSD
-* Improved responsiveness when running services such as Immich
+
+- Better stability under memory pressure
+- Reduced risk of out-of-memory (OOM) events
+- Less write activity on the SSD
+- Improved responsiveness when running services such as Immich
 
 **`CD-ROM`:** The laptop's built-in optical drive is kept active for a fun future upgrade—automating a CD ripping pipeline to feed raw audio tracks straight into the Navidrome music vault.
 
@@ -174,9 +174,11 @@ As a result:
   - `gallery.homelab.local`
 
 - Android devices cannot resolve these custom hostnames and must access services directly using:
+
   ```text
   192.168.100.199:<PORT>
   ```
+
 ## Future Plans
 
 - Deploy AdGuard Home for local DNS resolution.
@@ -194,4 +196,3 @@ Building a homelab on a 13-year-old laptop taught me:
 - zram is surprisingly useful on low-memory systems.
 - Docker can run comfortably even on very old hardware.
 - Old hardware still has plenty of value when given the right workload.
-
