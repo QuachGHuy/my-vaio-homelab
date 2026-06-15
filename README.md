@@ -82,7 +82,7 @@ Management and web applications are accessed through Nginx Proxy Manager using c
 
 Examples:
 
-- `nas.homelab.local` → Cockpit
+- `system.homelab.local` → Cockpit
 - `portainer.homelab.local` → Portainer
 - `music.homelab.local` → Navidrome
 - `gallery.homelab.local` → Immich
@@ -142,10 +142,10 @@ Most services are accessed through Nginx Proxy Manager and do not require direct
 
 Currently, only the following service ports are exposed:
 
-| Service | Port | Reason |
-|----------|----------|----------|
-| Immich | 2283 | Android Immich app requires direct access |
-| Navidrome | 4533 | Android music clients require direct access |
+| Service   | Port     | Reason                                      |
+|-----------|----------|---------------------------------------------|
+| Immich    | 2283     | Android Immich app requires direct access   |
+| Navidrome | 4533     | Android music clients require direct access |
 
 All other services remain accessible only through the reverse proxy:
 
@@ -265,7 +265,7 @@ The homelab currently does not have a dedicated local DNS server.
 As a result:
 
 - Ubuntu management clients must manually maintain `/etc/hosts` entries to resolve local domains such as:
-  - `nas.homelab.local`
+  - `system.homelab.local`
   - `portainer.homelab.local`
   - `music.homelab.local`
   - `gallery.homelab.local`
