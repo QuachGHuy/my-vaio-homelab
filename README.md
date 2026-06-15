@@ -293,3 +293,64 @@ Building a homelab on a 13-year-old laptop taught me:
 - zram is surprisingly useful on low-memory systems.
 - Docker can run comfortably even on very old hardware.
 - Old hardware still has plenty of value when given the right workload.
+
+## Homelab Showcase & UI Previews
+
+Here is a visual tour of the running services on the Sony Vaio server, demonstrating both the desktop proxy routing and the direct mobile app access.
+
+### 1. Media & Cloud Services (Dual-View)
+
+#### Immich (Photo Backup Server)
+
+Accessed via secure HTTPS on desktops and direct IP streaming on mobile devices.
+
+<table>
+  <tr>
+    <td align="center" width="55%">
+      <b>Desktop Web UI (https://gallery.homelab.local)</b><br>
+      <img src="assets/demo/immich-desktop.png" alt="Immich Desktop View" width="100%">
+    </td>
+    <td align="center" width="15%">
+      <b>Android Mobile App (Direct Port 2283)</b><br>
+      <img src="assets/demo/immich-mobile.jpg" alt="Immich Android View" width="100%">
+    </td>
+  </tr>
+</table>
+
+#### Navidrome (Music Streaming Server)
+
+Serving lossless FLAC/DSD audio archives over the local network.
+
+<table>
+  <tr>
+    <td align="center" width="55%">
+      <b>Desktop Web Player (https://music.homelab.local)</b><br>
+      <img src="assets/demo/navidrome-desktop.png" alt="Navidrome Desktop View" width="100%">
+    </td>
+    <td align="center" width="15%">
+      <b>Android HiByMusic Client (Direct Port 4533)</b><br>
+      <img src="assets/demo/navidrome-mobile.jpg" alt="Navidrome Android View" width="100%">
+    </td>
+  </tr>
+</table>
+
+---
+
+### 2. Administrative & Infrastructure Services (Desktop View Only)
+
+These management dashboards are strictly hidden behind the reverse proxy network and are only accessible from trusted desktop/laptop management clients.
+
+#### Cockpit (Host OS Administration)
+
+Real-time resource monitoring showing low host overhead, optimized memory footprints, and active `zram` Swap compression.
+![Cockpit Dashboard](assets/demo/cockpit-desktop.png)
+
+#### Portainer (Docker Stack Management)
+
+Centralized environment showing the health status of the decoupled multi-compose application containers running on the shared `proxy` network layer.
+![Portainer Dashboard](assets/demo/portainer-desktop.png)
+
+#### Nginx Proxy Manager (Central Routing Engine)
+
+Dashboard managing host discovery mapping, routing local domains (`*.homelab.local`) to internal container networks with custom SSL certificate profiles active.
+![Nginx Proxy Manager Dashboard](assets/demo/npm-desktop.png)
