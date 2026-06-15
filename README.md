@@ -37,7 +37,7 @@ Giving my 2012 Sony Vaio laptop a second life as a Debian-powered homelab server
 
 | Service | Purpose | Access |
 | ---------- | ---------- | ---------- |
-| Cockpit | Server administration | nas.homelab.local |
+| Cockpit | Server administration | system.homelab.local |
 | Portainer | Container management | portainer.homelab.local |
 | Navidrome | Music streaming | music.homelab.local |
 | Immich | Photo backup | gallery.homelab.local |
@@ -70,13 +70,110 @@ This directory contains the architecture documentation, network topology, and st
 
 ![Network Diagram](architecture/network-diagram.png)
 
-The homelab runs on Debian 13 (headless) and uses Nginx Proxy Manager as a central reverse proxy for internal services. UFW is used as the host firewall to restrict unnecessary network access.
+The homelab runs on Debian 13 (headless) and uses Nginx Proxy Manager as the central reverse proxy for browser-based access. UFW is configured on the host to expose only the ports required for management and media services.
 
-#### Traffic Routing Note
+#### Current Access Model
 
-- **Ubuntu Laptop (Management Client):** Resolves local domains like `*.homelab.local` directly via the `/etc/hosts` file to route through the Reverse Proxy. This provides cleaner URLs and allows all services to be accessed through a single reverse proxy.
+The homelab currently supports two access methods:
 
-- **Android Phone (Media Client):** Due to mobile OS restrictions (non-rooted), mobile devices bypass local DNS and access services directly using the server's static internal IP and exposed physical ports (`192.168.100.199:PORT`).
+##### Browser-Based Access (Desktop/Laptop)
+
+Management and web applications are accessed through Nginx Proxy Manager using custom local domains.
+
+Examples:
+
+- `nas.homelab.local` → Cockpit
+- `portainer.homelab.local` → Portainer
+- `music.homelab.local` → Navidrome
+- `gallery.homelab.local` → Immich
+
+Since a dedicated DNS server has not been deployed yet, these domains are resolved through the client machine's `/etc/hosts` file.
+
+Traffic flow:
+
+```text
+Client
+   │
+   ▼
+Nginx Proxy Manager (80/443)
+   │
+   ├── Cockpit
+   ├── Portainer
+   ├── Navidrome
+   └── Immich
+```
+
+##### Mobile Application Access (Android)
+
+Android media applications currently connect directly to the homelab using the server's static IP address and exposed service ports.
+
+Examples:
+
+- Immich → `192.168.100.199:2283`
+- Navidrome → `192.168.100.199:4533`
+
+This approach is used temporarily because local DNS resolution has not yet been implemented for mobile devices.
+
+Traffic flow:
+
+```text
+Android Client
+      │
+      ├── 192.168.100.199:2283 → Immich
+      └── 192.168.100.199:4533 → Navidrome
+```
+
+#### Future Network Architecture
+
+The long-term plan is to deploy:
+
+- AdGuard Home (Local DNS)
+- Cloudflared Tunnel (Secure Remote Access)
+- Public Domain Names
+- Automatic HTTPS Certificates
+
+Once local DNS is available, all services can be accessed through domain names and routed entirely through Nginx Proxy Manager, allowing direct service ports such as `2283` and `4533` to be removed from the firewall.
+
+#### Security Considerations
+
+The homelab follows a "minimum exposure" principle.
+
+Most services are accessed through Nginx Proxy Manager and do not require direct port exposure on the host.
+
+Currently, only the following service ports are exposed:
+
+| Service | Port | Reason |
+|----------|----------|----------|
+| Immich | 2283 | Android Immich app requires direct access |
+| Navidrome | 4533 | Android music clients require direct access |
+
+All other services remain accessible only through the reverse proxy:
+
+- Cockpit
+- Portainer
+- Future web applications
+
+This design reduces the attack surface of the homelab while maintaining compatibility with mobile applications.
+
+The direct service ports (`2283`, `4533`) are considered a temporary solution until AdGuard Home is deployed.
+
+Once local DNS is available, Android devices will be able to resolve homelab domains directly, allowing:
+
+```text
+Android App
+      │
+      ▼
+music.homelab.local
+gallery.homelab.local
+      │
+      ▼
+Nginx Proxy Manager
+      │
+      ▼
+Internal Containers
+```
+
+At that point, the direct firewall rules for Immich and Navidrome can be removed, and all traffic will flow through the reverse proxy.
 
 ---
 
