@@ -16,7 +16,7 @@ services:
       # Restrict background workers for heavy queue tasks (like video transcoding) to prevent CPU starvation
       - IMMICH_CPU_WORKERS=1                 
     ports:
-      - 2283
+      - 2283:2283
     depends_on:
       - redis
       - database

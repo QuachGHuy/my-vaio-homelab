@@ -8,8 +8,8 @@ services:
 
     restart: unless-stopped
 
-    expose:
-      - "4533"
+    ports:
+      - "4533:4533"
 
     mem_limit: 256m
 
