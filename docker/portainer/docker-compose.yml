@@ -2,13 +2,20 @@ services:
   portainer:
     image: portainer/portainer-ce:latest
     container_name: portainer
+    environment:
+      TZ: "Your_Timezone"  # Replace with your timezone, e.g., "America/New_York"
     restart: always               
     ports:
-      - "8000:8000"
-      - "9443:9443"                 
+      - 9443                
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
 
 volumes:
   portainer_data:                    

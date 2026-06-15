@@ -9,6 +9,13 @@ services:
       - '81:81'      
     environment:
       TZ: "Your_Timezone"  # Replace with your timezone, e.g., "America/New_York"
+    networks:
+      - proxy
     volumes:
       - ./data:/data           
       - ./letsencrypt:/etc/letsencrypt   
+
+networks:
+  proxy:
+    external: true
+    

@@ -7,23 +7,24 @@ services:
       - /mnt/nas_storage/huyquach/gallery:/usr/src/app/upload
       - /etc/localtime:/etc/localtime:ro
     environment:
+      - TZ=Your_Timezone  # <-- Replace with your timezone, e.g., "America/New_York"
       - DB_HOSTNAME=immich_postgres
       - DB_USERNAME=postgres
       - DB_PASSWORD=your_secure_password     # <-- Make sure to change this to a secure password later
       - DB_DATABASE_NAME=immich
       - REDIS_HOSTNAME=immich_redis
       # Restrict background workers for heavy queue tasks (like video transcoding) to prevent CPU starvation
-      - IMMICH_CPU_WORKERS=2                 
+      - IMMICH_CPU_WORKERS=1                 
     ports:
-      - 2283:2283
+      - 2283
     depends_on:
       - redis
       - database
     restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 1000M                   # Hard-cap the application RAM under 1GB to protect host resources
+    networks:
+      - immich
+      - proxy
+    mem_limit: 1000m                # Hard-cap the application RAM under 1GB to protect host resources
 
   redis:
     container_name: immich_redis
@@ -32,6 +33,8 @@ services:
       # Cache metadata on the internal SSD (vg_docker) for lightning-fast UI responsiveness
       - immich_redis_data:/data
     restart: always
+    networks:
+      - immich
 
   database:
     container_name: immich_postgres
@@ -54,7 +57,15 @@ services:
       # This completely saves the external HDD from destructive 4K random read/write cycles.
       - immich_db_data:/var/lib/postgresql/data
     restart: always
+    networks:
+      - immich
+
+networks:
+  immich:
+  proxy:
+    external: true
 
 volumes:
   immich_db_data:
   immich_redis_data:
+
