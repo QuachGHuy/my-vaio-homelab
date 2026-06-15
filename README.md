@@ -306,11 +306,11 @@ Accessed via secure HTTPS on desktops and direct IP streaming on mobile devices.
 
 <table>
   <tr>
-    <td align="center" width="55%">
+    <td align="center" width="75%">
       <b>Desktop Web UI (https://gallery.homelab.local)</b><br>
       <img src="assets/demo/immich-desktop.png" alt="Immich Desktop View" width="100%">
     </td>
-    <td align="center" width="15%">
+    <td align="center" width="25%">
       <b>Android Mobile App (Direct Port 2283)</b><br>
       <img src="assets/demo/immich-mobile.jpg" alt="Immich Android View" width="100%">
     </td>
@@ -323,11 +323,11 @@ Serving lossless FLAC/DSD audio archives over the local network.
 
 <table>
   <tr>
-    <td align="center" width="55%">
+    <td align="center" width="75%">
       <b>Desktop Web Player (https://music.homelab.local)</b><br>
       <img src="assets/demo/navidrome-desktop.png" alt="Navidrome Desktop View" width="100%">
     </td>
-    <td align="center" width="15%">
+    <td align="center" width="25%">
       <b>Android HiByMusic Client (Direct Port 4533)</b><br>
       <img src="assets/demo/navidrome-mobile.jpg" alt="Navidrome Android View" width="100%">
     </td>
@@ -336,7 +336,15 @@ Serving lossless FLAC/DSD audio archives over the local network.
 
 ---
 
-### 2. Administrative & Infrastructure Services (Desktop View Only)
+### 2. Network Attached Storage (NFS Client Mount)
+
+Verification of the host's mass-storage pool mounted directly onto the Ubuntu client desktop file manager via NFS.
+
+![NFS Client Storage View](assets/demo/nas-desktop.png)
+
+---
+
+### 3. Administrative & Infrastructure Services (Desktop View Only)
 
 These management dashboards are strictly hidden behind the reverse proxy network and are only accessible from trusted desktop/laptop management clients.
 
