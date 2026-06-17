@@ -101,6 +101,114 @@ The external 750GB HDD (sdb) acts as our NAS data vault. We mount it permanently
     df -h /mnt/nas_storage
     ```
 
+### External HDD Spindown Configuration
+
+This document provides a standalone guide to configuring automated power management for the external 750GB mechanical HDD attached via USB to the Debian 13 headless server.
+
+By enforcing an automated spindown (sleep) policy after **20 minutes** of absolute idle time, the homelab minimizes electricity consumption, reduces overall thermal output, and extends the mechanical lifespan of the drive.
+
+---
+
+#### 1. Prerequisites & Installation
+
+The standard tool used to manage Advanced Power Management (APM) and spindown timeouts on Linux storage drives is `hdparm`.
+
+Install the utility directly onto the host OS:
+
+```bash
+sudo apt update && sudo apt install hdparm -y
+```
+
+#### 2. Manual Spindown Verification
+
+Before writing persistent configuration profiles, verify that your external USB-to-SATA enclosure bridge chip properly supports and passes down ATA power management commands.
+Step 1: Force Standby Mode
+
+Execute the command below to immediately force the drive (assumed as /dev/sdb) to spin down:
+
+##### Step 1: Force Standby Mode
+
+Execute the command below to immediately force the drive (assumed as /dev/sdb) to spin down:
+
+```bash
+sudo hdparm -y /dev/sdb
+```
+
+Listen closely to the physical drive enclosure. You should distinctively hear the drive platters spin down and go completely silent.
+
+##### Step 2: Check Power Status Safely
+
+To verify the drive state without sending a command that inadvertently wakes it back up, run:
+
+```bash
+sudo hdparm -C /dev/sdb
+```
+
+**Expected Output:**
+
+```text
+/dev/sdb:
+ drive state is:  standby
+```
+
+(If the drive is running, it will output: drive state is: active/idle)
+
+#### 3. Idle Timeout Calculation
+
+The hdparm -S flag dictates the idle timeout threshold. The value parsing logic follows strict rules defined by the Linux kernel storage subsystem:
+
+- Values from 1 to 240 are multiplied by 5 seconds.
+- Values from 241 to 251 are multiplied by 30 minutes.
+
+To calculate a precise 20-minute standby window:
+
+- Convert minutes to seconds: 20 minutes = 1200 seconds.
+- Divide by the multiplier: 1200 seconds / 5 seconds = 240.
+
+Test the timeout threshold live on the device block:
+
+```bash
+sudo hdparm -S 240 /dev/sdb
+```
+
+#### 4. Persistent Configuration via UUID Mapping
+
+External USB drives are prone to shifting block letters (e.g., swapping from /dev/sdb to /dev/sdc) during reboots or USB bus resets. To prevent configuration failures, lock the spindown configuration permanently using the disk's unique UUID.
+
+##### Step 1: Locate the Drive UUID
+
+Run lsblk to fetch the UUID of your mass storage partition:
+
+```bash
+sudo lsblk -f
+```
+
+Copy the exact UUID string mapping to your external partition.
+
+##### Step 2: Append Rules to hdparm Configuration
+
+Open the system daemon configuration file:
+
+```bash
+sudo nano /etc/hdparm.conf
+```
+
+Scroll to the absolute bottom of the file and append the following block, substituting your actual block UUID:
+
+```ini
+/dev/disk/by-uuid/your-actual-uuid-here {
+    spindown_time = 240
+}
+```
+
+##### Step 3: Restart the Service
+
+Save changes and exit the text editor (Ctrl+O, Enter, Ctrl+X), then restart the hdparm daemon to instantly apply the rule:
+
+```bash
+sudo systemctl restart hdparm
+```
+
 ## 4. Laptop Lid Close Tweak (Prevent Sleep)
 
 By default, systemd will put a laptop to sleep when the lid is closed. Since this is a dedicated server, we need it to stay awake 24/7 with the lid closed.
