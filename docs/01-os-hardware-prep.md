@@ -101,144 +101,185 @@ The external 750GB HDD (sdb) acts as our NAS data vault. We mount it permanently
     df -h /mnt/nas_storage
     ```
 
-### External HDD Spindown Configuration
+## 4. External HDD Spindown Configuration (Optional)
 
-This document provides a standalone guide to configuring automated power management for the external 750GB mechanical HDD attached via USB to the Debian 13 headless server.
+This section configures automatic HDD spindown for the external 750GB WD Elements drive attached to the homelab server.
 
-By enforcing an automated spindown (sleep) policy after **20 minutes** of absolute idle time, the homelab minimizes electricity consumption, reduces overall thermal output, and extends the mechanical lifespan of the drive.
+The goal is to reduce power consumption, lower operating temperatures, and minimize unnecessary mechanical wear by automatically placing the drive into standby mode after **20 minutes of inactivity**.
 
----
+### 1. Install hdparm
 
-#### 1. Prerequisites & Installation
+`hdparm` is the standard Linux utility for configuring drive power management and standby timers.
 
-The standard tool used to manage Advanced Power Management (APM) and spindown timeouts on Linux storage drives is `hdparm`.
-
-Install the utility directly onto the host OS:
+Install the package:
 
 ```bash
 sudo apt update && sudo apt install hdparm -y
 ```
 
-#### 2. Manual Spindown Verification
+### 2. Verify Drive Compatibility
 
-Before writing persistent configuration profiles, verify that your external USB-to-SATA enclosure bridge chip properly supports and passes down ATA power management commands.
-Step 1: Force Standby Mode
+Before configuring a persistent standby timer, verify that the USB enclosure properly supports ATA power management commands.
 
-Execute the command below to immediately force the drive (assumed as /dev/sdb) to spin down:
+#### Step 1: Force the Drive into Standby
 
-##### Step 1: Force Standby Mode
-
-Execute the command below to immediately force the drive (assumed as /dev/sdb) to spin down:
+Assuming the external HDD currently appears as `/dev/sdc`:
 
 ```bash
-sudo hdparm -y /dev/sdb
+sudo hdparm -y /dev/sdc
 ```
 
-Listen closely to the physical drive enclosure. You should distinctively hear the drive platters spin down and go completely silent.
+The drive should immediately spin down and become silent.
 
-##### Step 2: Check Power Status Safely
+#### Step 2: Check the Current Power State
 
-To verify the drive state without sending a command that inadvertently wakes it back up, run:
+Verify the drive status:
 
 ```bash
-sudo hdparm -C /dev/sdb
+sudo hdparm -C /dev/sdc
 ```
 
-**Expected Output:**
+Expected output:
 
 ```text
-/dev/sdb:
- drive state is:  standby
+/dev/sdc:
+ drive state is: standby
 ```
 
-(If the drive is running, it will output: drive state is: active/idle)
+If the drive is still running:
 
-#### 3. Idle Timeout Calculation
+```text
+/dev/sdc:
+ drive state is: active/idle
+```
 
-The hdparm -S flag dictates the idle timeout threshold. The value parsing logic follows strict rules defined by the Linux kernel storage subsystem:
+Successful standby confirmation indicates that the USB-to-SATA bridge supports the required ATA commands and can be managed through `hdparm`.
 
-- Values from 1 to 240 are multiplied by 5 seconds.
-- Values from 241 to 251 are multiplied by 30 minutes.
+### 3. Configure the Standby Timeout
 
-To calculate a precise 20-minute standby window:
+The `-S` parameter controls how long the drive must remain completely idle before entering standby mode.
 
-- Convert minutes to seconds: 20 minutes = 1200 seconds.
-- Divide by the multiplier: 1200 seconds / 5 seconds = 240.
+For values between `1` and `240`:
 
-Test the timeout threshold live on the device block:
+```text
+timeout = value × 5 seconds
+```
+
+To configure a 20-minute timeout:
+
+```text
+20 minutes = 1200 seconds
+1200 ÷ 5 = 240
+```
+
+Test the timeout interactively:
 
 ```bash
-sudo hdparm -S 240 /dev/sdb
+sudo hdparm -S 240 /dev/sdc
 ```
 
-#### 4. Persistent Configuration via UUID Mapping
+This setting remains active until the next reboot.
 
-External USB drives are prone to shifting block letters (e.g., swapping from /dev/sdb to /dev/sdc) during reboots or USB bus resets. To prevent configuration failures, lock the spindown configuration permanently using the disk's unique UUID.
+### 4. Create a Persistent Configuration
 
-##### Step 1: Locate the Drive UUID
+Linux block device names such as `/dev/sdb` or `/dev/sdc` are assigned dynamically during boot and may change whenever storage devices are added, removed, or reordered.
 
-Run lsblk to fetch the UUID of your mass storage partition:
+To ensure the spindown policy survives reboots and hardware changes, use a persistent identifier from `/dev/disk/by-id/`.
+
+#### Step 1: Locate the Persistent Device Identifier
+
+List available device identifiers:
 
 ```bash
-sudo lsblk -f
+ls -l /dev/disk/by-id/
 ```
 
-Copy the exact UUID string mapping to your external partition.
+Example output:
 
-##### Step 2: Append Rules to hdparm Configuration
+```text
+usb-WD_Elements_1023_575834314136313536353731-0:0 -> ../../sdc
+```
 
-Open the system daemon configuration file:
+This identifier remains stable even if the kernel later assigns a different device name.
+
+#### Step 2: Configure hdparm
+
+Open the configuration file:
 
 ```bash
 sudo nano /etc/hdparm.conf
 ```
 
-Scroll to the absolute bottom of the file and append the following block, substituting your actual block UUID:
+Append the following block at the bottom:
 
 ```ini
-/dev/disk/by-uuid/your-actual-uuid-here {
+/dev/disk/by-id/usb-WD_Elements_1023_575834314136313536353731-0:0 {
     spindown_time = 240
 }
 ```
 
-##### Step 3: Restart the Service
+Where:
 
-Save changes and exit the text editor (Ctrl+O, Enter, Ctrl+X), then restart the hdparm daemon to instantly apply the rule:
-
-```bash
-sudo systemctl restart hdparm
+```text
+240 × 5 seconds = 1200 seconds = 20 minutes
 ```
 
-## 4. Laptop Lid Close Tweak (Prevent Sleep)
+#### Step 3: Apply the Configuration
+
+On Debian 13, `hdparm` is typically applied through udev rules during device initialization rather than through a dedicated systemd service.
+
+To ensure the new configuration is loaded, reboot the server:
+
+```bash
+sudo reboot
+```
+
+### 5. Verify After Reboot
+
+After restarting the service or rebooting the system, verify that the configuration is active.
+
+Check the drive power state:
+
+```bash
+sudo hdparm -C /dev/sdc
+```
+
+Expected output after sufficient idle time:
+
+```text
+/dev/sdc:
+ drive state is: standby
+```
+
+## 5. Laptop Lid Close Tweak (Prevent Sleep)
 
 By default, systemd will put a laptop to sleep when the lid is closed. Since this is a dedicated server, we need it to stay awake 24/7 with the lid closed.
 
-1. SSH into your newly installed Debian server.
-2. Open the systemd login configuration file:
+#### 1. Open the systemd login configuration file
 
-   ```bash
-   sudo nano /etc/systemd/logind.conf   
-   ```
+```bash
+sudo nano /etc/systemd/logind.conf   
+```
 
-3. Locate and modify the following lines (remove the # comment sign if present):
+#### 2. Locate and modify the following lines (remove the # comment sign if present)
 
-    ```bash
-    HandleLidSwitch=ignore
-    HandleLidSwitchExternalPower=ignore
-    HandleLidSwitchDocked=ignore
-    ```
+```bash
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+```
 
-4. Save and exit (Ctrl+O, Enter, Ctrl+X).
+#### 3. Save and exit (Ctrl+O, Enter, Ctrl+X).
 
-5. Restart the systemd-logind service to apply changes immediately:
+#### 4. Restart the systemd-logind service to apply changes immediately:
 
-   ```bash
-   sudo systemctl restart systemd-logind
-   ```
+```bash
+sudo systemctl restart systemd-logind
+```
 
 Now you can safely close the laptop lid and tuck the Vaio away near your router.
 
-## 5 Memory Optimization: Setting up zram
+## 6 Memory Optimization: Setting up zram
 
 To expand our tight 4GB RAM capacity and protect the SSD from heavy SWAP wear, we utilize zram with `zstd` compression.
 
@@ -276,7 +317,7 @@ To expand our tight 4GB RAM capacity and protect the SSD from heavy SWAP wear, w
 
    You should see /dev/zram0 listed with a size of 2G.
 
-## 6. Basic System Utilities
+## 7. Basic System Utilities
 
 To keep the system lightweight, only a small set of essential administration and monitoring tools are installed directly on the host.
 
