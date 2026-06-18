@@ -58,41 +58,41 @@ Example layout used in this homelab:
 
 The external 750GB HDD (sdb) acts as our NAS data vault. We mount it permanently using its unique UUID to avoid mounting issues if the USB cable is replugged into a different port.
 
+### 3.1 Server-Side Configuration
+
 1. Create a permanent directory for the mount point:
 
     ```bash
     sudo mkdir -p /mnt/nas_storage
     ```
 
-2. Identify the UUID of your external partition (sdb1):
+2. Identify the UUID of your external partition (e.g., `sdb1` or `sdc1`):
 
     ```bash
     sudo lsblk -f
     ```
 
-    Copy the UUID string (e.g., UUID="xxxx-xxxx-xxxx").
+    Copy the exact UUID string (e.g., `UUID="xxxx-xxxx-xxxx"`).
 
-3. Open the file system table configuration:
+3. Open the filesystem table configuration:
 
     ```bash
     sudo nano /etc/fstab
     ```
 
-4. Add the following line at the bottom of the file (replace with your actual UUID and file system type, e.g., ext4):
+4. Add the following line at the bottom of the file (replace with your actual UUID and file system type, e.g., `ext4`):
 
     ```text
-    UUID=your-actual-uuid-here /mnt/nas_storage auto defaults,nofail,x-systemd.device-timeout=5 0 0
+    UUID=your-actual-uuid-here /mnt/nas_storage ext4 defaults,nofail,x-systemd.device-timeout=30 0 0
     ```
 
-    With `nofail` and `x-systemd.device-timeout=5`, the homelab:
-    - Waits up to 5 seconds for the drive to appear.
-    - If not found, logs an error but continues booting.
-    - The server runs normally, except that partition is not mounted.
+    - **Why `x-systemd.device-timeout=30`?** External mechanical storage arrays on legacy USB controllers take time to initialize and spin up. Extending this window to 30 seconds ensures the server doesn't prematurely skip mounting the drive if the hardware enumerates late.
+    - **CRITICAL NOTE ON SERVER AUTOMOUNT:** Do **NOT** use `x-systemd.automount` or `x-systemd.idle-timeout` on the server instance. Doing so will cause systemd to drop the mount block during idle periods, crashing the background NFS server daemon and causing catastrophic terminal locks on connected clients.
 
-5. Mount the drive instantly without rebooting:
+5. Refresh systemd units and mount the drive instantly without rebooting:
 
     ```bash
-    sudo mount -a
+    sudo systemctl daemon-reload && sudo mount -a
     ```
 
 6. Verify the mount status:
@@ -100,6 +100,47 @@ The external 750GB HDD (sdb) acts as our NAS data vault. We mount it permanently
     ```bash
     df -h /mnt/nas_storage
     ```
+
+---
+
+### 3.2 Client-Side Integration (Hardening for Portability)
+
+If you use a Desktop/Laptop Client to connect to this NFS share, taking your machine away from your home network will cause a traditional "Hard Mount" configuration to freeze your entire desktop workspace. The client kernel hangs indefinitely waiting for a response from the missing server IP (`192.168.100.199`).
+
+To prevent client-side system freezes and accommodate the server's spin-up delay, apply the following advanced mount parameters on your **Client Machine**:
+
+1. Open the filesystem table on your client machine:
+
+    ```bash
+    sudo nano /etc/fstab
+    ```
+
+2. Append the following resilient NFS profile (ensure it is written as a single, continuous line):
+
+    ```text
+    192.168.100.199:/mnt/nas_storage/huyquach /home/huyquach/NAS nfs rw,soft,bg,intr,timeo=150,retrans=3,rsize=1048576,wsize=1048576,noatime,_netdev,x-systemd.automount,x-systemd.device-timeout=15,x-systemd.idle-timeout=10min 0 0
+    ```
+
+3. **Parameter Breakdown:**
+    - `soft`, `bg`, `intr`: If the server is offline, the client immediately drops the connection attempt and throws an I/O error instead of blocking the kernel. Connection attempts run silently in the background and can be forcefully killed (`Ctrl+C`).
+    - `timeo=150` & `x-systemd.device-timeout=15`: Extends the client patience window to 15 seconds. This allows a sleeping server HDD enough time to receive the spin-up command, spin up its physical platters, and safely return data blocks without premature timeouts.
+    - `x-systemd.automount`: Temporarily ignores the mount at boot time. The system only triggers the network handshake the exact millisecond you open or access the `~/NAS` folder.
+    - `x-systemd.idle-timeout=10min`: Safely drops the local mount link after 10 minutes of complete inactivity, clearing the path for the server drive to seamlessly enter its mechanical standby cycle.
+
+4. Apply the configuration on your client:
+
+    ```bash
+    sudo systemctl daemon-reload && sudo mount -a
+    ```
+
+#### Emergency Workspace Recovery (If Client Hangs)
+
+If your client machine experiences a path lock before applying these parameters, use a **Lazy Force Unmount** to release the system disk daemon (`udisksd`) without restarting:
+
+```bash
+sudo umount -f -l /home/huyquach/NAS
+sudo systemctl restart udisks2
+```
 
 ## 4. External HDD Spindown Configuration (Optional)
 
@@ -255,29 +296,29 @@ Expected output after sufficient idle time:
 
 By default, systemd will put a laptop to sleep when the lid is closed. Since this is a dedicated server, we need it to stay awake 24/7 with the lid closed.
 
-#### 1. Open the systemd login configuration file
+1. Open the systemd login configuration file
 
-```bash
-sudo nano /etc/systemd/logind.conf   
-```
+    ```bash
+    sudo nano /etc/systemd/logind.conf   
+    ```
 
-#### 2. Locate and modify the following lines (remove the # comment sign if present)
+2. Locate and modify the following lines (remove the # comment sign if present)
 
-```bash
-HandleLidSwitch=ignore
-HandleLidSwitchExternalPower=ignore
-HandleLidSwitchDocked=ignore
-```
+    ```bash
+    HandleLidSwitch=ignore
+    HandleLidSwitchExternalPower=ignore
+    HandleLidSwitchDocked=ignore
+    ```
 
-#### 3. Save and exit (Ctrl+O, Enter, Ctrl+X).
+3. Save and exit (Ctrl+O, Enter, Ctrl+X).
 
-#### 4. Restart the systemd-logind service to apply changes immediately:
+4. Restart the systemd-logind service to apply changes immediately:
 
-```bash
-sudo systemctl restart systemd-logind
-```
+    ```bash
+    sudo systemctl restart systemd-logind
+    ```
 
-Now you can safely close the laptop lid and tuck the Vaio away near your router.
+**Now you can safely close the laptop lid and tuck the Vaio away near your router.**
 
 ## 6 Memory Optimization: Setting up zram
 
