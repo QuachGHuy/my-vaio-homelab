@@ -118,14 +118,14 @@ To prevent client-side system freezes and accommodate the server's spin-up delay
 2. Append the following resilient NFS profile (ensure it is written as a single, continuous line):
 
     ```text
-    192.168.100.199:/mnt/nas_storage/huyquach /home/huyquach/NAS nfs rw,soft,intr,timeo=150,retrans=3,rsize=1048576,wsize=1048576,noatime,_netdev,x-systemd.automount,x-systemd.device-timeout=15,x-systemd.idle-timeout=10min 0 0
+    192.168.100.199:/mnt/nas_storage/huyquach /home/huyquach/NAS nfs rw,soft,timeo=150,retrans=3,rsize=1048576,wsize=1048576,noatime,_netdev,x-systemd.automount,x-systemd.device-timeout=15,x-systemd.idle-timeout=10min 0 0
     ```
 
 3. **Parameter Breakdown:**
-    - `soft`, `intr`: Prevents the client kernel from hanging indefinitely if the server goes offline. The `soft` option forces the client to report an I/O error after hitting the timeout limit, while `intr` ensures that any blocked file operations can be safely interrupted or forcefully killed by the user (`Ctrl+C`).
+    - `soft`: Prevents the client kernel from hanging indefinitely if the server goes offline. The client will gracefully report an I/O error to any active process after hitting the timeout limit, allowing the system to remain responsive. Any blocked user commands (e.g., `ls`, `cp`) can be immediately cancelled using `Ctrl+C` in their respective terminals.
     - `timeo=150` & `x-systemd.device-timeout=15`: Extends the client patience window to 15 seconds. This allows a sleeping server HDD enough time to receive the spin-up command, spin up its physical platters, and safely return data blocks without premature timeouts.
     - `x-systemd.automount`: Temporarily ignores the mount at boot time. The system only triggers the network handshake the exact millisecond you open or access the `~/NAS` folder.
-    - `x-systemd.idle-timeout=10min`: Safely drops the local mount link after 10 minutes of c
+    - `x-systemd.idle-timeout=10min`: Safely drops the local mount link after 10 minutes of complete inactivity, clearing the path for the server drive to seamlessly enter its mechanical standby cycle.
 
 4. Apply the configuration on your client:
 
