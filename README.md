@@ -245,18 +245,66 @@ Although zram helps reduce memory pressure, RAM remains the primary bottleneck o
 
 ---
 
-### Network Bottlenecks
+### ~~Network Bottlenecks~~
 
-The Sony Vaio relies on a Wi-Fi 4 (802.11n) wireless adapter from 2012.
+~~The Sony Vaio relies on a Wi-Fi 4 (802.11n) wireless adapter from 2012.~~
 
-Current limitations include:
+~~Current limitations include:~~
 
-- Lower throughput compared to modern Gigabit Ethernet
-- Higher latency and less stable transfers
-- Slower photo and video uploads to Immich
-- Reduced NFS file transfer performance
+- ~~Lower throughput compared to modern Gigabit Ethernet~~
+- ~~Higher latency and less stable transfers~~
+- ~~Slower photo and video uploads to Immich~~
+- ~~Reduced NFS file transfer performance~~
 
-Additionally, the ISP-provided router handles both internet traffic and local network traffic, which may become a bottleneck during large file transfers.
+~~Additionally, the ISP-provided router handles both internet traffic and local network traffic, which may become a bottleneck during large file transfers.~~
+
+---
+
+### Storage & Mechanical HDD Bottlenecks
+
+After upgrading the network to Gigabit Ethernet, the network is no longer the limiting factor during file transfers. The next bottleneck appears at the storage layer.
+
+- **The Main Limitation**
+
+  The NAS storage is backed by a legacy 750GB Western Digital hard drive (SATA II, 5200 RPM). During large file transfers, the drive can sustain only about **32–36 MB/s** of sequential write throughput.
+
+- **Why CPU Wait Time Becomes High**
+
+  At first glance, seeing CPU **I/O Wait (`wai`)** values reach **80–90%** may look alarming, but it does not indicate that the CPU is overloaded.
+
+  In reality, the Gigabit network is capable of delivering data at roughly **117 MB/s**, while the HDD can only write at around **35 MB/s**. The CPU spends most of its time waiting for the disk to finish writing incoming data, which causes the high I/O wait percentage.
+
+- **How Linux Handles the Mismatch**
+
+  Linux automatically uses available RAM as a temporary write buffer. Incoming network traffic is first stored in memory and then gradually flushed to disk.
+
+  Once the write cache begins to fill up, the kernel intelligently slows down incoming network traffic to match the maximum write speed of the HDD. This prevents memory exhaustion, maintains system stability, and ensures data integrity.
+
+- **Real-World Impact**
+
+  Even though the network can theoretically transfer files at over **100 MB/s**, actual copy speeds are limited by the mechanical hard drive to approximately **35 MB/s**.
+
+  This behavior is completely normal and expected for older low-RPM HDDs. The server remains healthy, responsive, and stable—the storage device simply becomes the slowest component in the data path.
+
+#### Data Flow Overview
+
+```text
+Client PC
+    │
+    │ ~117 MB/s (Gigabit Ethernet)
+    ▼
+Linux RAM Cache
+    │
+    │ Buffered and throttled by kernel
+    ▼
+750GB WD HDD (5200 RPM)
+    │
+    └─ ~32–36 MB/s sustained write speed
+```
+
+As a result, now the maximum practical transfer speed is determined by the HDD rather than the network infrastructure.
+
+---
 
 ### DNS and Service Discovery
 
@@ -279,8 +327,8 @@ As a result:
 ## Future Plans
 
 - Deploy AdGuard Home for local DNS resolution.
-- Upgrade RAM to 16GB (if supported).
-- Add a dedicated Gigabit switch to reduce network bottlenecks and improve local file transfer performance.
+- Upgrade RAM to 16GB.
+- ~~[Add a dedicated Gigabit switch to reduce network bottlenecks and improve local file transfer performance.](/update/01-integrate-gigabit-switch-network.md)~~
 - Add a GitHub Actions self-hosted runner.
 - Run lightweight local AI models (Qwen2.5-Coder 3B).
 
